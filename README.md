@@ -4,7 +4,7 @@
 В рамках проекта предлагается провести исследования применимости различных LLM для решения задач анализа данных. Базовая гипотеза заключается в том, что для определенных типов задач достаточно использовать простые модели, так как они будут давать схожее качество по сравнению с более сильными (более ресурсотребовательными). В рамках проекта команде необходимо разработать методику сравнения и сравнить модели на задачах, полученных от заказчика.
 
 ### Описание репозитория
-На данный момент репозиторий состоит из одного файла _model-evaluation.ipynb_, в котором протестированы четыре модели: [sqlcoder-7b-2](https://huggingface.co/defog/sqlcoder-7b-2), [Chat2DB-SQL-7B](https://huggingface.co/Chat2DB/Chat2DB-SQL-7B), [DuckDB-NSQL-7B-v0.1](https://huggingface.co/motherduckdb/DuckDB-NSQL-7B-v0.1), [internlm2_5-7b](https://huggingface.co/internlm/internlm2_5-7b).
+На данный момент репозиторий состоит из одного файла _model-evaluation.ipynb_, в котором протестированы четыре модели: [sqlcoder-7b-2](https://huggingface.co/defog/sqlcoder-7b-2), [Chat2DB-SQL-7B](https://huggingface.co/Chat2DB/Chat2DB-SQL-7B), [DuckDB-NSQL-7B-v0.1](https://huggingface.co/motherduckdb/DuckDB-NSQL-7B-v0.1), [internlm2_5-7b](https://huggingface.co/internlm/internlm2_5-7b). Тестирование проводилось в рабочей среде Kaggle с использованием двух GPU T4 (16gb).
 
 ### TODO
 - [ ] Найти существующие LLM
