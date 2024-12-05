@@ -1,46 +1,39 @@
-from sentence_transformers import util
+from torch.utils.data import Dataset
 import numpy as np
+from sentence_transformers import util
 import pandas as pd
 import sqlite3
-import os
 import zipfile
-from torch.utils.data import Dataset
+import os
+
 
 class QueryDataset(Dataset):
     def __init__(self, queries : pd.DataFrame):
         super().__init__()
         self.queries = queries
+        self.__prepare()
 
     def __len__(self):
         return self.queries.__len__()
     
+    def __prepare(self):
+        data = []
+        for i in range(len(self.queries)):
+            row = self.queries[self.queries.index == i]
+            data.append({
+                'question_ru' : row['question'][i]['ru'],
+                'question_en' : row['question'][i]['en'],
+                'query_ru' : row['query'][i]['ru'],
+                'query_en' : row['query'][i]['en']
+            })
+        
+        self.prepared_data = data
+
+    def __iter__(self):
+        return iter(self.prepared_data)
+
     def __getitem__(self, index):
-        if isinstance(index, slice):
-            sl = []
-            start = index.start if index.start != None else 0
-            stop = index.stop if index.stop != None else self.__len__()
-            step = index.step if index.step != None else 1
-
-            for i in range(start, stop, step):
-                row = self.queries[self.queries.index == i]
-                sl.append({
-                    'question_ru' : row['question'][i]['ru'],
-                    'question_en' : row['question'][i]['en'],
-                    'query_ru' : row['query'][i]['ru'],
-                    'query_en' : row['query'][i]['en']
-                })
-            return sl
-
-
-        row = self.queries[self.queries.index == index] 
-        data = {
-            'question_ru' : row['question'][index]['ru'],
-            'question_en' : row['question'][index]['en'],
-            'query_ru' : row['query'][index]['ru'],
-            'query_en' : row['query'][index]['en']
-        }
-        return data
-    
+        return self.prepared_data[index]
     
 
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
