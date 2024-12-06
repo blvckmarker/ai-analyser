@@ -8,6 +8,11 @@ import os
 
 
 class QueryDataset(Dataset):
+    """
+    Класс, упрощающий работу с датасетом запросов, путём трансляции исходного датафрейма в список словарей.
+
+    Тесно связан со структурой датасета pauq
+    """
     def __init__(self, queries : pd.DataFrame):
         super().__init__()
         self.queries = queries
@@ -37,6 +42,20 @@ class QueryDataset(Dataset):
     
 
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
+    """
+    Алгоритм поиска ```count``` предложений из ```sentences```, семантически схожих с ```target sentence```.
+
+    Параметры
+    ----------
+    sentence_model : Any
+        Произвольная модель, имеющая интерфейс для векторизации входных токенов (предложений)
+    target_sentence : str
+        Предложение, для которого ищутся схожие по смыслу
+    sentences : list[str]
+        Корпус (список, датасет) предложений
+    count : int = 3
+        Число наиболее похожих по смыслу предложений, которые необходимо найти
+    """
     emb_target = sentence_model.encode(target_sentence)
 
     sims = []
@@ -50,6 +69,18 @@ def find_similar_sentences(sentence_model, target_sentence : str, sentences : li
     return similar_questions
 
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
+    """
+    Функция сравнения двух датафреймов
+
+    Доступны три режима: ```soft, strict, flexible```. 
+    
+    В режиме ```soft``` две таблицы считаются эквивалентными,
+    если они содержат одни и те же данные в произвольном порядке. 
+    
+    Режим ```strict``` отличается от ```soft``` лишь наличием условия упорядоченности данных в таблице.
+
+    Режим ```flexible``` есть отношение пересечения двух таблиц на их объединение (метрика IoU)
+    """
     if dataframe1.columns.shape != dataframe2.columns.shape:
         return False
     if not (dataframe1.columns == dataframe2.columns).all():
@@ -72,6 +103,19 @@ def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode 
      
 
 def load_table(database_path : str, queries_table_path : str, db_id : str):
+    """
+    Загрузка таблицы из датасета pauq
+
+    Параметры
+    ----------
+    database_path : str
+        Путь к конкретной базе данных в датасете pauq (например, папка ./pauq/academic, в которой содержатся два файла с расширениями .sqlite и .sql )
+        
+    queries_table_path : str
+        Путь к датасету с запросами 
+    db_id : str
+        Название конкретной базы данных, содержащейся в ```queries table```. Например, db_id = academic
+    """
     queries = pd.read_json(queries_table_path)
     queries = queries[queries['db_id'] == db_id]
     queries = queries.reset_index(drop=True)

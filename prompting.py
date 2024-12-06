@@ -1,5 +1,6 @@
 from utils import find_similar_sentences
 import pandas as pd
+import numpy as np
 
 
 class PromptBuilder:
