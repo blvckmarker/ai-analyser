@@ -1,10 +1,61 @@
-from sentence_transformers import util
+from torch.utils.data import Dataset
 import numpy as np
+from sentence_transformers import util
 import pandas as pd
 import sqlite3
 import zipfile
+import os
+
+
+class QueryDataset(Dataset):
+    """
+    Класс, упрощающий работу с датасетом запросов, путём трансляции исходного датафрейма в список словарей.
+
+    Тесно связан со структурой датасета pauq
+    """
+    def __init__(self, queries : pd.DataFrame):
+        super().__init__()
+        self.queries = queries
+        self.__prepare()
+
+    def __len__(self):
+        return self.queries.__len__()
+    
+    def __prepare(self):
+        data = []
+        for i in range(len(self.queries)):
+            row = self.queries[self.queries.index == i]
+            data.append({
+                'question_ru' : row['question'][i]['ru'],
+                'question_en' : row['question'][i]['en'],
+                'query_ru' : row['query'][i]['ru'],
+                'query_en' : row['query'][i]['en']
+            })
+        
+        self.prepared_data = data
+
+    def __iter__(self):
+        return iter(self.prepared_data)
+
+    def __getitem__(self, index):
+        return self.prepared_data[index]
+    
 
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
+    """
+    Алгоритм поиска ```count``` предложений из ```sentences```, семантически схожих с ```target sentence```.
+
+    Параметры
+    ----------
+    sentence_model : Any
+        Произвольная модель, имеющая интерфейс для векторизации входных токенов (предложений)
+    target_sentence : str
+        Предложение, для которого ищутся схожие по смыслу
+    sentences : list[str]
+        Корпус (список, датасет) предложений
+    count : int = 3
+        Число наиболее похожих по смыслу предложений, которые необходимо найти
+    """
     emb_target = sentence_model.encode(target_sentence)
 
     sims = []
@@ -18,6 +69,18 @@ def find_similar_sentences(sentence_model, target_sentence : str, sentences : li
     return similar_questions
 
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
+    """
+    Функция сравнения двух датафреймов
+
+    Доступны три режима: ```soft, strict, flexible```. 
+    
+    В режиме ```soft``` две таблицы считаются эквивалентными,
+    если они содержат одни и те же данные в произвольном порядке. 
+    
+    Режим ```strict``` отличается от ```soft``` лишь наличием условия упорядоченности данных в таблице.
+
+    Режим ```flexible``` есть отношение пересечения двух таблиц на их объединение (метрика IoU)
+    """
     if dataframe1.columns.shape != dataframe2.columns.shape:
         return False
     if not (dataframe1.columns == dataframe2.columns).all():
@@ -29,28 +92,44 @@ def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode 
         case 'strict':
             return int(dataframe1.equals(dataframe2))
         case 'flexible':
-            intersection = dataframe1.merge(dataframe2).shape[0]
-            union = pd.concat([dataframe1, dataframe2]).duplicated()
-            union = union[union == False].count()
+            hash_1 = set(pd.util.hash_pandas_object(dataframe1, index=False))
+            hash_2 = set(pd.util.hash_pandas_object(dataframe2, index=False))
+            intersection = hash_1 & hash_2
+            union = hash_1 | hash_2
 
-            return intersection / union if union != 0 else 1
+            return len(intersection) / len(union) if len(union) != 0 else 1
         case _:
             raise Exception('Incorrect mode value')
-        
+     
 
 def load_table(database_path : str, queries_table_path : str, db_id : str):
+    """
+    Загрузка таблицы из датасета pauq
+
+    Параметры
+    ----------
+    database_path : str
+        Путь к конкретной базе данных в датасете pauq (например, папка ./pauq/academic, в которой содержатся два файла с расширениями .sqlite и .sql )
+        
+    queries_table_path : str
+        Путь к датасету с запросами 
+    db_id : str
+        Название конкретной базы данных, содержащейся в ```queries table```. Например, db_id = academic
+    """
     queries = pd.read_json(queries_table_path)
     queries = queries[queries['db_id'] == db_id]
+    queries = queries.reset_index(drop=True)
+    dataset = QueryDataset(queries)
 
     sqlite_conn = sqlite3.connect(os.path.join(database_path, f'{db_id}.sqlite'))
-    schema = open('schema.sql').read()
+    schema = open(os.path.join(database_path, 'schema.sql')).read()
 
     db = sqlite_conn.cursor()
     try:
         db.executescript(schema)
     except:
         print('Some problem occured during schema execution')
-    return sqlite_conn, queries
+    return sqlite_conn, dataset
 
 
 def unzip_file(path, path_to):
