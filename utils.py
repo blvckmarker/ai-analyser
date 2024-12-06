@@ -61,11 +61,12 @@ def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode 
         case 'strict':
             return int(dataframe1.equals(dataframe2))
         case 'flexible':
-            intersection = dataframe1.merge(dataframe2).shape[0]
-            union = pd.concat([dataframe1, dataframe2]).duplicated()
-            union = union[union == False].count()
+            hash_1 = set(pd.util.hash_pandas_object(dataframe1, index=False))
+            hash_2 = set(pd.util.hash_pandas_object(dataframe2, index=False))
+            intersection = hash_1 & hash_2
+            union = hash_1 | hash_2
 
-            return intersection / union if union != 0 else 1
+            return len(intersection) / len(union) if len(union) != 0 else 1
         case _:
             raise Exception('Incorrect mode value')
      
