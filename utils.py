@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 from torch.utils.data import Dataset
 import numpy as np
 from sentence_transformers import util
