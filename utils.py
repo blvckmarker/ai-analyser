@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 from torch.utils.data import Dataset
 import numpy as np
 from sentence_transformers import util
@@ -110,7 +113,7 @@ def load_table(database_path : str, queries_table_path : str, db_id : str):
     ----------
     database_path : str
         Путь к конкретной базе данных в датасете pauq (например, папка ./pauq/academic, в которой содержатся два файла с расширениями .sqlite и .sql )
-        
+
     queries_table_path : str
         Путь к датасету с запросами 
     db_id : str
