@@ -9,9 +9,9 @@ import os
 
 class QueryDataset(Dataset):
     """
-    Класс, упрощающий работу с датасетом запросов, путём трансляции исходного датафрейма в список словарей.
+    A class that simplifies working with query dataset by translating the original dataframe into a list of dictionaries.
 
-    Тесно связан со структурой датасета pauq
+    It is closely related to the structure of the pauq dataset
     """
     def __init__(self, queries : pd.DataFrame):
         super().__init__()
@@ -43,18 +43,19 @@ class QueryDataset(Dataset):
 
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
     """
-    Алгоритм поиска ```count``` предложений из ```sentences```, семантически схожих с ```target sentence```.
+    The algorithm for searching for ``count`` sentences from ``sentences``, semantically similar to ``target sentence`'.
 
-    Параметры
+    Parameters
     ----------
-    sentence_model : Any
-        Произвольная модель, имеющая интерфейс для векторизации входных токенов (предложений)
-    target_sentence : str
-        Предложение, для которого ищутся схожие по смыслу
+    sentence_model : Anн
+    Model that has an interface for vectorizing input tokens (sentences)
+
+    target_sentence : structure
+        A sentence for which looking similar sentences
     sentences : list[str]
-        Корпус (список, датасет) предложений
+        The body (list, dataset) of sentences
     count : int = 3
-        Число наиболее похожих по смыслу предложений, которые необходимо найти
+        The number of sentences that are most similar in meaning that need to be found
     """
     emb_target = sentence_model.encode(target_sentence)
 
@@ -70,16 +71,15 @@ def find_similar_sentences(sentence_model, target_sentence : str, sentences : li
 
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
     """
-    Функция сравнения двух датафреймов
+    The function of comparing two dataframes
 
-    Доступны три режима: ```soft, strict, flexible```. 
+    Three modes are available: ```soft, strict, flexible```. 
     
-    В режиме ```soft``` две таблицы считаются эквивалентными,
-    если они содержат одни и те же данные в произвольном порядке. 
+    In the ```soft``` mode, two tables are equivalent, if they contain the same data in any order. 
     
-    Режим ```strict``` отличается от ```soft``` лишь наличием условия упорядоченности данных в таблице.
+    The ```strict``` mode have condition of orderliness.
 
-    Режим ```flexible``` есть отношение пересечения двух таблиц на их объединение (метрика IoU)
+    The `flexible` mode is the ratio of the intersection of two tables to their union (IoU metrics)
     """
     if dataframe1.columns.shape != dataframe2.columns.shape:
         return False
@@ -104,17 +104,18 @@ def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode 
 
 def load_table(database_path : str, queries_table_path : str, db_id : str):
     """
-    Загрузка таблицы из датасета pauq
+    Loading tables from the pauq dataset
 
-    Параметры
+    Parameter
     ----------
     database_path : str
-        Путь к конкретной базе данных в датасете pauq (например, папка ./pauq/academic, в которой содержатся два файла с расширениями .sqlite и .sql )
-        
+        The path to a specific database in the pauq dataset 
+        (for example, the folder ./pub/academic, which stores two files with the extensions .sqlite and .sql)
+
     queries_table_path : str
-        Путь к датасету с запросами 
+        Path to dataset with queries 
     db_id : str
-        Название конкретной базы данных, содержащейся в ```queries table```. Например, db_id = academic
+        Name of the specific database contained in the `queries table`. For example, db_id = academic
     """
     queries = pd.read_json(queries_table_path)
     queries = queries[queries['db_id'] == db_id]
