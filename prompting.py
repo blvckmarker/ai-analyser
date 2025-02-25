@@ -1,7 +1,7 @@
 from utils import find_similar_sentences
 import pandas as pd
 import numpy as np
-
+from utils import *
 
 class PromptBuilder:
     def __init__(self, question):
@@ -31,26 +31,16 @@ class PromptBuilder:
         return self
 
     def add_schema_template(self, db_conn):
-        sql_master = pd.read_sql('SELECT * FROM sqlite_master', db_conn)
-        tables = sql_master[sql_master['type'] == 'table']['name']
-        hier = []
-        for table in tables:
-            temp = pd.read_sql(f'SELECT * FROM {table}', db_conn)
-            hier.append({
-                'table_name' : table,
-                'struct' : list(temp)
-                })
-        
+        structure = structure_from_connection(db_conn)
+
         schema_template = ''
-        for table in hier:
-            schema_template += f"{table['table_name']}({', '.join(table['struct'])});\n"
+        for table in structure:
+            schema_template += f"{table['table_name']}({', '.join(table['columns'])});\n"
         self.__schema_template = schema_template
         return self
 
     def add_cell_value_referencing(self, db_conn, count=1):
-        sql_master = pd.read_sql('SELECT * FROM sqlite_master', db_conn)
-        tables = sql_master[sql_master['type'] == 'table']['name']
-
+        tables = tables_from_connection(db_conn)
         data_information = []
         for table in tables:
             pd_table = pd.read_sql(f'SELECT * FROM {table}', db_conn)

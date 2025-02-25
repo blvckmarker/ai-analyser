@@ -4,15 +4,11 @@ from sentence_transformers import util
 import pandas as pd
 import sqlite3
 import zipfile
+from sqlalchemy import text
 import os
 
 
 class QueryDataset(Dataset):
-    """
-    A class that simplifies working with query dataset by translating the original dataframe into a list of dictionaries.
-
-    It is closely related to the structure of the pauq dataset
-    """
     def __init__(self, queries : pd.DataFrame):
         super().__init__()
         self.queries = queries
@@ -42,21 +38,6 @@ class QueryDataset(Dataset):
     
 
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
-    """
-    The algorithm for searching for ``count`` sentences from ``sentences``, semantically similar to ``target sentence`'.
-
-    Parameters
-    ----------
-    sentence_model : Aní
-    Model that has an interface for vectorizing input tokens (sentences)
-
-    target_sentence : structure
-        A sentence for which looking similar sentences
-    sentences : list[str]
-        The body (list, dataset) of sentences
-    count : int = 3
-        The number of sentences that are most similar in meaning that need to be found
-    """
     emb_target = sentence_model.encode(target_sentence)
 
     sims = []
@@ -69,18 +50,8 @@ def find_similar_sentences(sentence_model, target_sentence : str, sentences : li
     similar_questions = [sentences[pair[0]] for pair in nearest if pair[1] != 1.0][:count]
     return similar_questions
 
+
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
-    """
-    The function of comparing two dataframes
-
-    Three modes are available: ```soft, strict, flexible```. 
-    
-    In the ```soft``` mode, two tables are equivalent, if they contain the same data in any order. 
-    
-    The ```strict``` mode have condition of orderliness.
-
-    The `flexible` mode is the ratio of the intersection of two tables to their union (IoU metrics)
-    """
     if dataframe1.columns.shape != dataframe2.columns.shape:
         return False
     if not (dataframe1.columns == dataframe2.columns).all():
@@ -103,20 +74,6 @@ def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode 
      
 
 def load_table(database_path : str, queries_table_path : str, db_id : str):
-    """
-    Loading tables from the pauq dataset
-
-    Parameter
-    ----------
-    database_path : str
-        The path to a specific database in the pauq dataset 
-        (for example, the folder ./pub/academic, which stores two files with the extensions .sqlite and .sql)
-
-    queries_table_path : str
-        Path to dataset with queries 
-    db_id : str
-        Name of the specific database contained in the `queries table`. For example, db_id = academic
-    """
     queries = pd.read_json(queries_table_path)
     queries = queries[queries['db_id'] == db_id]
     queries = queries.reset_index(drop=True)
@@ -136,3 +93,23 @@ def load_table(database_path : str, queries_table_path : str, db_id : str):
 def unzip_file(path, path_to):
     with zipfile.ZipFile(path, 'r') as zip_ref:
         zip_ref.extractall(path_to)
+
+
+def tables_from_connection(conn : sqlite3.Connection):
+    master = pd.DataFrame(conn.execute(text('SELECT * FROM sqlite_master')).fetchall())
+    tables = list(master[master['type'] == 'table']['name'])
+    return tables
+
+
+def structure_from_connection(conn : sqlite3.Connection):
+    tables = tables_from_connection(conn)
+    structure = []
+    for table in tables:
+        columns = list(pd.DataFrame(conn.execute(text(f'SELECT * FROM {table}')).fetchall()))[1:]
+        structure.append(
+            {
+                'table_name' : table,
+                'columns' : columns
+            })
+        
+    return structure
