@@ -1,15 +1,23 @@
-from utils import find_similar_sentences
 import pandas as pd
 import numpy as np
-from utils import *
+from utils.general import *
+from utils.dataset import *
+
 
 class PromptBuilder:
     def __init__(self, question):
         self.__prompt = ''
+        self.schema_linking = False
         self.__question = question
         self.__few_shot = None
         self.__schema_template = None
         self.__cell_value_referencing = None
+
+
+    def switch_schema_linking(self, table_structure=None):
+        self.table_structure = table_structure
+        self.schema_linking = not self.schema_linking
+        return self
 
 
     def add_few_shot(self, sentence_model, target_question, queries):
@@ -29,9 +37,13 @@ class PromptBuilder:
 
         self.__few_shot = few_shot_template
         return self
+    
 
     def add_schema_template(self, db_conn):
-        structure = structure_from_connection(db_conn)
+        if self.schema_linking:
+            structure = self.table_structure
+        else:
+            structure = structure_from_connection(db_conn)
 
         schema_template = ''
         for table in structure:
@@ -39,11 +51,21 @@ class PromptBuilder:
         self.__schema_template = schema_template
         return self
 
+
     def add_cell_value_referencing(self, db_conn, count=1):
-        tables = tables_from_connection(db_conn)
+        if self.schema_linking:
+            tables = [table['table_name'] for table in self.table_structure]
+        else:
+            tables = tables_from_connection(db_conn)
+
         data_information = []
         for table in tables:
-            pd_table = pd.read_sql(f'SELECT * FROM {table}', db_conn)
+            if self.schema_linking:
+                instance = [bucket for bucket in self.table_structure if bucket['table_name'] == table][0]
+                pd_table = pd.read_sql(f'SELECT * FROM {table}', db_conn)[instance['columns']]
+            else:
+                pd_table = pd.read_sql(f'SELECT * FROM {table}', db_conn)
+            
             indexes = np.random.randint(0, pd_table.shape[0], size=count)
             series = [pd_table[pd_table.index == idx] for idx in indexes]
 
@@ -59,6 +81,7 @@ class PromptBuilder:
         self.__cell_value_referencing = value_template
         return self
 
+
     def include_target(self, number: int):
         Variations = {
             1: 'Ответь на вопрос SQLite sql-запросом и без объяснений.\n',
@@ -66,9 +89,10 @@ class PromptBuilder:
         }
         return Variations[number]
 
+
     def include_few_shot(self, number: int):
         if self.__few_shot is None:
-            raise IndexError('Не добавлен few_shot')
+            raise RuntimeError('Не добавлен few_shot')
 
         Variations = {
             1: f'### Примеры похожих запросов и ответы на них:\n{self.__few_shot}\n',
@@ -76,9 +100,10 @@ class PromptBuilder:
         }
         return Variations[number]
 
+
     def include_schema_template(self, number: int):
         if self.__schema_template is None:
-            raise IndexError('Не добавлен schema_template')
+            raise RuntimeError('Не добавлен schema_template')
 
         Variations = {
             1: f'### Схема таблиц:\n{self.__schema_template}\n',
@@ -86,15 +111,17 @@ class PromptBuilder:
         }
         return Variations[number]
 
+
     def include_cell_value_referencing(self, number: int):
         if self.__cell_value_referencing is None:
-            raise IndexError('Не добавлен cell_value_referencing')
+            raise RuntimeError('Не добавлен cell_value_referencing')
 
         Variations = {
             1: f'### Примеры данных в таблице:\n{self.__cell_value_referencing}\n',
             2: ''
         }
         return Variations[number]
+
 
     def include_question(self, number: int):
         Variations = {
@@ -103,25 +130,27 @@ class PromptBuilder:
         }
         return Variations[number]
 
+
     def build_prompt(self, number: int):
         Variations = {
             1: {
-                'include_target': 1,
-                'include_few_shot': 1,
-                'include_schema_template': 1,
-                'include_cell_value_referencing': 1,
-                'include_question': 1
+                self.include_target : 1,
+                self.include_few_shot : 1,
+                self.include_schema_template : 1,
+                self.include_cell_value_referencing : 1,
+                self.include_question : 1
             },
             2: {
-                'include_question': 1
+                self.include_question : 1
+            },
+            3:
+            {
+                self.include_schema_template : 1,
+                self.include_question : 1
             }
         }
 
-        for func_name, value in Variations[number].items():
-            if hasattr(self, func_name):  # Проверяем, существует ли метод у объекта
-                func = getattr(self, func_name) 
+        for func, value in Variations[number].items():
                 self.__prompt += func(value)  
-            else:
-                print(f"Функция {func_name} не найдена")
 
         return self.__prompt
