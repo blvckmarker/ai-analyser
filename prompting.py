@@ -84,8 +84,10 @@ class PromptBuilder:
 
     def include_target(self, number: int):
         Variations = {
-            1: 'Ответь на вопрос SQLite sql-запросом и без объяснений.\n',
-            2: ''
+            1: '### Ответь на вопрос SQLite sql-запросом и без объяснений.\n',
+            2: 'Ответь на вопрос SQLite sql-запросом и без объяснений.\n',
+            3: '* Ответь на вопрос SQLite sql-запросом и без объяснений.\n',
+            4: 'Ответь на вопрос SQLite sql-запросом и без объяснений\n'
         }
         return Variations[number]
 
@@ -96,7 +98,9 @@ class PromptBuilder:
 
         Variations = {
             1: f'### Примеры похожих запросов и ответы на них:\n{self.__few_shot}\n',
-            2: ''
+            2: f'Примеры похожих запросов и ответы на них:\n{self.__few_shot}\n',
+            3: f'* Примеры похожих запросов и ответы на них:\n{self.__few_shot}\n',
+            4: f'Примеры похожих запросов и ответы на них\n{self.__few_shot}\n'
         }
         return Variations[number]
 
@@ -107,7 +111,9 @@ class PromptBuilder:
 
         Variations = {
             1: f'### Схема таблиц:\n{self.__schema_template}\n',
-            2: ''
+            2: f'Схема таблиц:\n{self.__schema_template}\n',
+            3: f'* Схема таблиц:\n{self.__schema_template}\n',
+            4: f'Схема таблиц\n{self.__schema_template}\n'
         }
         return Variations[number]
 
@@ -118,7 +124,9 @@ class PromptBuilder:
 
         Variations = {
             1: f'### Примеры данных в таблице:\n{self.__cell_value_referencing}\n',
-            2: ''
+            2: f'Примеры данных в таблице:\n{self.__cell_value_referencing}\n',
+            3: f'* Примеры данных в таблице:\n{self.__cell_value_referencing}\n',
+            4: f'Примеры данных в таблице\n{self.__cell_value_referencing}\n'
         }
         return Variations[number]
 
@@ -126,7 +134,9 @@ class PromptBuilder:
     def include_question(self, number: int):
         Variations = {
             1: f'### Вопрос: {self.__question}\n### SQL:\n\n',
-            2: ''
+            2: f'Вопрос: {self.__question}\nSQL:\n\n',
+            3: f'* Вопрос: {self.__question}\n* SQL:\n\n',
+            4: f'Вопрос\n {self.__question}\nSQL\n\n',
         }
         return Variations[number]
 
