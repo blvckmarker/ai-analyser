@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
-from utils.general import *
-from utils.dataset import *
-
+from utils.general import find_similar_sentences
+from utils.dataset import structure_from_connection, tables_from_connection
 
 class PromptBuilder:
     def __init__(self, question):
@@ -21,14 +20,14 @@ class PromptBuilder:
 
 
     def add_few_shot(self, sentence_model, target_question, queries):
-        questions = [sample['question_ru'] for sample in queries]
+        questions = [sample['question'] for sample in queries]
 
         input_examples = []
         similar = find_similar_sentences(sentence_model, target_question, questions, count=3)
         for sample in queries:
-            curr_qs = sample['question_ru']
+            curr_qs = sample['question']
             if curr_qs in similar:
-                input_examples.append([curr_qs, sample['query_ru']])
+                input_examples.append([curr_qs, sample['query']])
 
         few_shot_template = ''
         for ex in input_examples:
@@ -67,11 +66,11 @@ class PromptBuilder:
                 pd_table = pd.read_sql(f'SELECT * FROM {table}', db_conn)
             
             indexes = np.random.randint(0, pd_table.shape[0], size=count)
-            series = [pd_table[pd_table.index == idx] for idx in indexes]
+            series = [pd_table[pd_table.index == idx].to_numpy() for idx in indexes]
 
             data_information.append({
                 'table_name' : table,
-                'examples' : [f"[{', '.join(map(str,list(ser.values.squeeze())))}]" for ser in series]
+                'examples' : [f"[{', '.join(map(str,list(ser.reshape(ser.shape[1]))))}]" for ser in series]
             })
 
         value_template = ''
@@ -145,8 +144,13 @@ class PromptBuilder:
             },
             3:
             {
-                self.include_schema_template : 1,
+                self.include_cell_value_referencing : 1,
                 self.include_question : 1
+            },
+            4:
+            {
+                self.include_question : 1,
+                self.include_schema_template : 1
             }
         }
 

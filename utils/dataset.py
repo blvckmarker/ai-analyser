@@ -1,67 +1,42 @@
-from torch.utils.data import Dataset
+import string
 import pandas as pd
-import sqlite3
-from sqlalchemy import text
-import os
+from sqlalchemy import text, Connection
 
 
-class QueryDataset(Dataset):
-    def __init__(self, queries : pd.DataFrame):
-        super().__init__()
-        self.queries = queries
-        self.__prepare()
+class IterableDataFrame():
+    def __init__(self, df : pd.DataFrame):
+        self.df = df
+        self.__series = {}
+        for idx in self.df.index:
+            sample = {
+                column : self.df[self.df.index == idx][column][idx] for column in self.df.keys()
+            }
+            self.__series[idx] = sample
 
     def __len__(self):
-        return self.queries.__len__()
-    
-    def __prepare(self):
-        data = []
-        for i in range(len(self.queries)):
-            row = self.queries[self.queries.index == i]
-            data.append({
-                'question_ru' : row['question'][i]['ru'],
-                'question_en' : row['question'][i]['en'],
-                'query_ru' : row['query'][i]['ru'],
-                'query_en' : row['query'][i]['en']
-            })
-        
-        self.prepared_data = data
+        return self.df.shape[0]
 
+    def as_list(self):
+        return list(self.__series.values())
+    
     def __iter__(self):
-        return iter(self.prepared_data)
+        return iter(self.as_list())
 
     def __getitem__(self, index):
-        return self.prepared_data[index]
-    
-
-def load_table(database_path : str, queries_table_path : str, db_id : str):
-    queries = pd.read_json(queries_table_path)
-    queries = queries[queries['db_id'] == db_id]
-    queries = queries.reset_index(drop=True)
-    dataset = QueryDataset(queries)
-
-    sqlite_conn = sqlite3.connect(os.path.join(database_path, f'{db_id}.sqlite'))
-    schema = open(os.path.join(database_path, 'schema.sql')).read()
-
-    db = sqlite_conn.cursor()
-    try:
-        db.executescript(schema)
-    except:
-        print('Some problem occured during schema execution')
-    return sqlite_conn, dataset
+        return self.__series[index]
 
 
-def tables_from_connection(conn : sqlite3.Connection):
+def tables_from_connection(conn : Connection):
     master = pd.DataFrame(conn.execute(text('SELECT * FROM sqlite_master')).fetchall())
     tables = list(master[master['type'] == 'table']['name'])
     return tables
 
 
-def structure_from_connection(conn : sqlite3.Connection):
+def structure_from_connection(conn : Connection):
     tables = tables_from_connection(conn)
     structure = []
     for table in tables:
-        columns = list(pd.DataFrame(conn.execute(text(f'SELECT * FROM {table}')).fetchall()).columns)[1:]
+        columns = list(pd.DataFrame(conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()).columns)[1:]
         structure.append(
             {
                 'table_name' : table,
@@ -71,14 +46,18 @@ def structure_from_connection(conn : sqlite3.Connection):
     return structure
 
 
-def prepare_column_names(conn : sqlite3.Connection):
+def prepare_column_names(conn : Connection):
     structure = structure_from_connection(conn)
     for table in structure:
         for column in table['columns']:
-            if ' ' in column:
+            if len((set(string.punctuation) | set(string.whitespace)) & set(column)) != 0:
                 new_name = ''.join([char for char in column if str.isalnum(char)])
                 conn.execute(text(
-                    f'''ALTER TABLE {table['table_name']} RENAME COLUMN "{column}" TO {new_name}'''
+                    f'''ALTER TABLE "{table['table_name']}" RENAME COLUMN "{column}" TO "{new_name}"'''
                 ))
+
+        if len((set(string.punctuation) | set(string.whitespace)) & set(table['table_name'])) != 0:
+            new_table_name = ''.join([char for char in table['table_name'] if str.isalnum(char)]);
+            conn.execute(text(f'''ALTER TABLE "{table['table_name']}" RENAME TO "{new_table_name}"'''))
 
     return True

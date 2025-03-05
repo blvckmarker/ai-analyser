@@ -21,10 +21,10 @@ def find_similar_sentences(sentence_model, target_sentence : str, sentences : li
 
 
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
-    if dataframe1.columns.shape != dataframe2.columns.shape:
-        return False
-    if not (dataframe1.columns == dataframe2.columns).all():
-        return False
+    # if dataframe1.columns.shape != dataframe2.columns.shape:
+    #     return False
+    # if not (dataframe1.columns == dataframe2.columns).all():
+    #     return False
     
     match mode:
         case 'soft':
