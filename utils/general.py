@@ -5,8 +5,22 @@ import zipfile
 import sqlparse
 
 
-
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
+    """
+    Функция поиска похожих по смыслу предложений из набора `sentences` для указанного предложения `target_sentence`
+
+    Parameters
+    ----------
+    sentence_model : Any
+        Модель, позволяющая векторизовать текст
+    target_sentence: str
+        Предложение, для которого нужно найти похожие по смыслу предложения
+    sentences : List[str]
+        Набор предложений
+    count : int
+        Количество ожидаемых предложений
+    """
+
     emb_target = sentence_model.encode(target_sentence)
 
     sims = []
@@ -21,6 +35,19 @@ def find_similar_sentences(sentence_model, target_sentence : str, sentences : li
 
 
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
+    """
+    Функция сравнения двух таблиц
+
+    Parameters
+    ----------
+    dataframe1 : pd.DataFrame
+        Первая таблица
+    dataframe2 : pd.DataFrame
+        Вторая таблица
+    mode : str
+        Режим сравнения. Допустимы режимы soft, strict, flexible
+    """
+
     # if dataframe1.columns.shape != dataframe2.columns.shape:
     #     return False
     # if not (dataframe1.columns == dataframe2.columns).all():
@@ -48,6 +75,17 @@ def unzip_file(path, path_to):
 
 
 def parse_literals(sql : str, table_structure : list[dict]):
+    """
+    Функция, вытягивающая все названия таблиц и столбцов, которые упомянуты в запросе `sql`
+
+    Parameters
+    ----------
+    sql : str
+        SQL запрос
+    table_structure : List[dict]
+        Структура таблицы, которая может быть получена при помощи функции `structure_from_connection`
+    """
+
     root = sqlparse.parse(sql)[0]
     names = []
 
@@ -63,6 +101,8 @@ def parse_literals(sql : str, table_structure : list[dict]):
     tables = set([table['table_name'] for table in table_structure])
     visited_tables = set([])
     buckets = []
+
+    # В этом говне не рекомендую особо купаться. Хотя блочная схема для алгоритма вполне примитивна
     for name in names:
         if name in tables and name not in visited_tables:
             buckets.append({

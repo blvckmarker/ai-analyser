@@ -3,7 +3,11 @@ import pandas as pd
 from sqlalchemy import text, Connection
 
 
-class IterableDataFrame():
+class IterableDataFrame:
+    """
+    Класс, позволяющий итерироваться в таблице типа `pd.DataFrame`
+    """
+
     def __init__(self, df : pd.DataFrame):
         self.df = df
         self.__series = {}
@@ -16,23 +20,44 @@ class IterableDataFrame():
     def __len__(self):
         return self.df.shape[0]
 
-    def as_list(self):
+    def __as_list(self):
         return list(self.__series.values())
     
     def __iter__(self):
-        return iter(self.as_list())
+        return iter(self.__as_list())
 
     def __getitem__(self, index):
+        return self.__as_list()[index]
+    
+    def at_index(self, index):
         return self.__series[index]
 
 
 def tables_from_connection(conn : Connection):
+    """
+    Функция, возвращающая список названий всех таблиц для данного соединения `conn`
+
+    Parameters
+    ----------
+    conn : sqlalchemy.Connection
+        Соединение с базой данных
+    """
+
     master = pd.DataFrame(conn.execute(text('SELECT * FROM sqlite_master')).fetchall())
     tables = list(master[master['type'] == 'table']['name'])
     return tables
 
 
 def structure_from_connection(conn : Connection):
+    """
+    Функция, возвращающая список словарей вида {table_name, columns}, где table_name - str, а columns - List[str]
+
+    Parameters
+    ----------
+    conn : sqlalchemy.Connection
+        Соединение с базой данных
+    """
+
     tables = tables_from_connection(conn)
     structure = []
     for table in tables:
@@ -47,6 +72,16 @@ def structure_from_connection(conn : Connection):
 
 
 def prepare_column_names(conn : Connection):
+    """
+    Функция, обрабатывающая базу данных из соединения `conn`. Функция переименовывает названия всех таблиц и их столбцов, 
+    которые содержат whitespace и punctuation символы. Возвращает True, если переименовывание прошло успешно
+
+    Parameters
+    ----------
+    conn : sqlalchemy.Connection
+        Соединение с базой данных
+    """
+    
     structure = structure_from_connection(conn)
     for table in structure:
         for column in table['columns']:

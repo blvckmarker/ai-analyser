@@ -9,6 +9,10 @@ import sqlparse
 
 
 class SqlNode:
+    """
+    Класс, предоставляющий интерфейс взаимодействия с библиотекой `zss` для синтаксических деревьев из библиотеки `sqlparse`
+    """
+
     def __init__(self, node):
         self.children = []
         self.raw_node = node
@@ -36,10 +40,29 @@ class SqlNode:
 
 
 def dist_comp(node1, node2):
+    """
+    Компаратор для двух вершин дерева
+    """
+
     return int(node1 != node2)
 
 
 def ratio(tree1 : SqlNode, tree2 : SqlNode):
+    """
+    Метрика Tree Edit Distance для двух деревьев
+
+    Parameters
+    ----------
+    tree1 : SqlNode
+        Корень первого дерева
+    tree2 : SqlNode
+        Корень второго дерева
+
+    Return
+    ------
+        Значение метрики на отрезке [0;1]
+    """
+
     edit_distance = zss.simple_distance(tree1, tree2, SqlNode.get_children, SqlNode.get_label, dist_comp)
 
     def __tree_nodes_count(root):
@@ -52,3 +75,7 @@ def ratio(tree1 : SqlNode, tree2 : SqlNode):
     
     max_nodes = max(__tree_nodes_count(tree1), __tree_nodes_count(tree2))
     return max(1 - edit_distance/max_nodes, 0)
+
+
+def parse_sql(query : str):
+    return SqlNode(sqlparse.parse(query)[0])
