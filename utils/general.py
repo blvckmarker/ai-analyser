@@ -123,5 +123,12 @@ def parse_literals(sql : str, table_structure : list[dict]):
                         instance = [bucket for bucket in buckets if bucket['table_name'] == table['table_name']][0]
                         if name not in instance['columns']:
                             instance['columns'].append(name)
+
+
+    if '*' in sql:
+        for bucket in buckets:
+            columns_instance = [table['columns'] for table in table_structure if table['table_name'] == bucket['table_name']][0]
+            bucket['columns'] = columns_instance
+        
     
     return buckets
