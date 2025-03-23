@@ -43,7 +43,11 @@ def find_sql(text : str, start_keyword='SELECT'):
     Функция, которая ищет в строке `text` первое вхождение самого длинного, правильного SQL запроса
     """
 
-    begin_sql = re.search(f'({start_keyword}).*', text, flags=re.IGNORECASE).group()
+    matches = re.search(f'({start_keyword}).*', text, flags=re.IGNORECASE)
+    if not matches:
+        return ''
+
+    begin_sql = matches.group()
     splitted = begin_sql.split()
 
     maybe_sql = ''
@@ -58,6 +62,7 @@ def find_sql(text : str, start_keyword='SELECT'):
 
     found_sql = ' '.join(splitted[:last_success_pos + 1])
     return found_sql
+
 
 
 def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode : str) -> int:
