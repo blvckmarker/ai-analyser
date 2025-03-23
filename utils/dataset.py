@@ -1,7 +1,6 @@
 import string
 import pandas as pd
-from sqlalchemy import text, Connection
-
+from sqlalchemy import text, Connection, inspect
 
 class IterableDataFrame:
     """
@@ -61,13 +60,33 @@ def structure_from_connection(conn : Connection):
     tables = tables_from_connection(conn)
     structure = []
     for table in tables:
-        columns = list(pd.DataFrame(conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()).columns)[1:]
+        columns = pd.DataFrame(conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()).columns.to_list()
         structure.append(
             {
                 'table_name' : table,
                 'columns' : columns
             })
         
+    return structure
+
+
+def structure_from_connection_dict(conn : Connection):
+    """
+    Функция, возвращающая словарь словарей вида {"Table" : {"Col" : "INT", ...}}
+
+    Parameters
+    ----------
+    conn : sqlalchemy.Connection
+        Соединение с базой данных
+    """
+
+    tables = tables_from_connection(conn)
+    structure = {}
+    for table in tables:
+        columns = inspect(conn).get_columns(table)
+        columns_meta = {column['name'] : column['type'] for column in columns}
+        structure[table] = columns_meta
+
     return structure
 
 
@@ -85,14 +104,14 @@ def prepare_column_names(conn : Connection):
     structure = structure_from_connection(conn)
     for table in structure:
         for column in table['columns']:
-            if len((set(string.punctuation) | set(string.whitespace)) & set(column)) != 0:
-                new_name = ''.join([char for char in column if str.isalnum(char)])
+            new_name = str.lower(''.join([char for char in column if str.isalnum(char)]))
+            if new_name != column:
                 conn.execute(text(
                     f'''ALTER TABLE "{table['table_name']}" RENAME COLUMN "{column}" TO "{new_name}"'''
                 ))
 
-        if len((set(string.punctuation) | set(string.whitespace)) & set(table['table_name'])) != 0:
-            new_table_name = ''.join([char for char in table['table_name'] if str.isalnum(char)]);
+        new_table_name = str.lower(''.join([char for char in table['table_name'] if str.isalnum(char)]))
+        if new_table_name != table['table_name']:
             conn.execute(text(f'''ALTER TABLE "{table['table_name']}" RENAME TO "{new_table_name}"'''))
 
     return True

@@ -1,3 +1,7 @@
+"""
+Возможно, уже бесполезный модуль
+"""
+
 import zss
 import sqlparse
 
