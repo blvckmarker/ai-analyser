@@ -8,6 +8,7 @@ from sqlglot import exp
 import sqlglot.optimizer
 import re
 from spans import *
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 def find_similar_sentences(sentence_model, target_sentence : str, sentences : list[str], count : int = 3):
     """
@@ -205,3 +206,69 @@ class ExcelIO(object):
     def read_excel(path : str):
         df = pd.read_excel(path)
         return df
+
+def normalize_table(
+    df: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Normalizes a dataframe by:
+    1. sorting columns in alphabetical order
+    2. sorting rows using values from first column to last
+    3. resetting index
+    """
+    # sort columns in alphabetical order
+    sorted_df = df.reindex(sorted(df.columns), axis=1)
+    # sort rows using values from first column to last
+    sorted_df = sorted_df.sort_values(by=list(sorted_df.columns))
+    # reset index
+    sorted_df = sorted_df.reset_index(drop=True)
+    return sorted_df
+
+def subset_df(
+    df_sub: pd.DataFrame,
+    df_super: pd.DataFrame,
+    verbose: bool = False,
+) -> bool:
+    """
+    Checks if df_sub is a subset of df_super
+    """
+    if df_sub.empty:
+        return True  # trivial case
+    # make a copy of df_super so we don't modify the original while keeping track of matches
+    df_super_temp = df_super.copy(deep=True)
+    matched_columns = []
+    for col_sub_name in df_sub.columns:
+        col_match = False
+        for col_super_name in df_super_temp.columns:
+            col_sub = df_sub[col_sub_name].sort_values().reset_index(drop=True)
+            col_super = (
+                df_super_temp[col_super_name].sort_values().reset_index(drop=True)
+            )
+            try:
+                assert_series_equal(
+                    col_sub, col_super, check_dtype=False, check_names=False
+                )
+                col_match = True
+                matched_columns.append(col_super_name)
+                # remove col_super_name to prevent us from matching it again
+                df_super_temp = df_super_temp.drop(columns=[col_super_name])
+                break
+            except AssertionError:
+                continue
+        if col_match == False:
+            if verbose:
+                print(f"no match for {col_sub_name}")
+            return False
+    df_sub_normalized = normalize_table(df_sub)
+
+    # get matched columns from df_super, and rename them with columns from df_sub, then normalize
+    df_super_matched = df_super[matched_columns].rename(
+        columns=dict(zip(matched_columns, df_sub.columns))
+    )
+    df_super_matched = normalize_table(df_super_matched)
+
+    try:
+        assert_frame_equal(df_sub_normalized, df_super_matched, check_dtype=False)
+        return True
+    except AssertionError:
+        return False
