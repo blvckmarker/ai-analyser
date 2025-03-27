@@ -18,3 +18,4 @@ class ExtendedSqlSpan(Span):
     df_gold_columns : list[str]
     df_pred_columns : list[str]
     TED : int
+    Error : str | None

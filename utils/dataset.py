@@ -1,6 +1,6 @@
-import string
 import pandas as pd
 from sqlalchemy import text, Connection, inspect
+
 
 class IterableDataFrame:
     """
@@ -115,3 +115,4 @@ def prepare_column_names(conn : Connection):
             conn.execute(text(f'''ALTER TABLE "{table['table_name']}" RENAME TO "{new_table_name}"'''))
 
     return True
+

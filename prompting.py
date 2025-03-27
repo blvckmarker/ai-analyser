@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import sqlalchemy
 from utils.general import find_similar_sentences
-from utils.dataset import structure_from_connection, tables_from_connection
+from utils.dataset import structure_from_connection, tables_from_connection, IterableDataFrame
 
 
 class PromptBuilder:
@@ -30,7 +30,11 @@ class PromptBuilder:
         return self
 
 
-    def add_few_shot(self, queries, target_question : str, sentence_model):
+    def add_few_shot(self, 
+                     queries : IterableDataFrame, 
+                     target_question : str, 
+                     sentence_model, 
+                     count : int = 1):
         """
         Метод, отвечающий за добавление фичи Few-Shot в промпт
 
@@ -41,14 +45,15 @@ class PromptBuilder:
             Модель, позволяющая векторизовать текст
         target_question : str
             Вопрос, для которого нужно найти похожие по смыслу вопросы
-        queries : Any
+        queries : IterableDataFrame
             Набор вопросов и запросов, среди которых нужно найти ближайшие по смыслу вопросы. Объект должен являться матрицей Nx2
+        count : int
         """
 
         questions = [sample['question'] for sample in queries]
 
         input_examples = []
-        similar = find_similar_sentences(sentence_model, target_question, questions, count=3)
+        similar = find_similar_sentences(sentence_model, target_question, questions, count)
         for sample in queries:
             curr_qs = sample['question']
             if curr_qs in similar:
