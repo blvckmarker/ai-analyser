@@ -5,8 +5,10 @@ import zipfile
 from sqlglot import exp
 import sqlglot.optimizer
 import re
-from spans import *
 from pandas.testing import assert_frame_equal, assert_series_equal
+from spans import *
+from table_finder import DtoTable, DtoColumn
+from tqdm import tqdm
 
 
 class ExcelIO(object):
@@ -56,7 +58,7 @@ def find_sql(text : str, start_keyword='SELECT'):
     Функция, которая ищет в строке `text` первое вхождение самого длинного, правильного SQL запроса
     """
 
-    matches = re.search(f'({start_keyword}).*', text, flags=re.IGNORECASE)
+    matches = re.search(f'({start_keyword}).*', text, flags=re.IGNORECASE|re.DOTALL)
     if not matches:
         return ''
 
@@ -99,7 +101,7 @@ def table_similarity(dataframe1 : pd.DataFrame, dataframe2 : pd.DataFrame, mode 
     
     match mode:
         case 'soft':
-            return subset_df(dataframe1, dataframe2) and subset_df(dataframe2, dataframe1)
+            return int(subset_df(dataframe1, dataframe2) and subset_df(dataframe2, dataframe1))
         case 'strict':
             return int(dataframe1.equals(dataframe2))
         case 'flexible':
@@ -137,10 +139,10 @@ def schema_parse(sql : str, structure_dict : dict):
         schema=structure_dict
     )
 
-    buckets = {table.name : set([]) for table in optimized_sql.find_all(exp.Table)}
-    for column in optimized_sql.find_all(exp.Column):
-        table_of_col = column.table
-        buckets[table_of_col].add(column.name)
+    buckets = {table.name : set(structure_dict[table.name].keys()) for table in optimized_sql.find_all(exp.Table)}
+    # for column in optimized_sql.find_all(exp.Column):
+    #     table_of_col = column.table
+    #     buckets[table_of_col].add(column.name)
 
     as_default = []
     for k, v in buckets.items():
@@ -209,3 +211,23 @@ def subset_df(
         return True
     except AssertionError:
         return False
+    
+
+
+def dto_tables_from_dataframe(df: pd.DataFrame) -> list[DtoTable]: 
+    tables = []
+
+    for table in tqdm(df['table'].unique()):
+        t : pd.DataFrame = df[df['table'] == table]
+        columns : list[DtoColumn] = []
+        for idx in t.index:
+            name = str(t[t.index == idx]['field'][idx]).strip()
+            desc = str(t[t.index == idx]['field_description'][idx]).strip()
+
+            column = DtoColumn(name, desc)
+            columns.append(column)
+
+        dto_table = DtoTable(table, str(t['table_description'][idx]).strip(), columns)
+        tables.append(dto_table)
+
+    return tables

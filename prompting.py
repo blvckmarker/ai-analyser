@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 import sqlalchemy
-from utils.general import find_similar_sentences
-from utils.dataset import structure_from_connection, tables_from_connection, IterableDataFrame
-
+from utils.general import *
+from utils.dataset import *
+from table_finder import DtoTable, DtoColumn
 
 class PromptBuilder:
     """
@@ -68,9 +68,9 @@ class PromptBuilder:
         return self
     
 
-    def add_schema_template(self, db_conn : sqlalchemy.Connection):
+    def add_schema_template_from_connection(self, db_conn : sqlalchemy.Connection):
         """
-        Метод, отвечающий за добавление фичи Schema Template в промпт
+        Метод, отвечающий за добавление фичи Schema Template в промпт через соедиенение с БД
 
         Parameters
         ----------
@@ -82,6 +82,31 @@ class PromptBuilder:
             structure = self.table_structure
         else:
             structure = structure_from_connection(db_conn)
+
+        schema_template = ''
+        for table in structure:
+            schema_template += f"{table['table_name']}({', '.join(table['columns'])});\n"
+
+        self.__prompt += schema_template + '\n'
+        return self
+
+
+    def add_schema_template_from_dto_tables(self, dto_tables : list[DtoTable]):
+        """
+        Метод, отвечающий за добавление фичи Schema Template в промпт через список объектов типа DtoTable
+
+        Parameters
+        ----------
+        db_conn : sqlalchemy.Connection
+            Соединение с базой данных
+        """
+        structure = []
+        for dto_table in dto_tables:
+            columns = [column.Name for column in dto_table.Columns]
+            structure.append({
+                'table_name' : dto_table.Name,
+                'columns' : columns
+            })
 
         schema_template = ''
         for table in structure:
