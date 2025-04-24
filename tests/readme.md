@@ -23,6 +23,7 @@ self.tokenizer = AutoTokenizer.from_pretrained(self.path, trust_remote_code=True
 ```
 
 ### Модель NL->SQL
++ стоковая
 + дообученная [по NL-SQL_gold, по таблицам]
 + параметры генерации:
 ```
